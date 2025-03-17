@@ -22,4 +22,15 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    // No-argument constructor required by JPA
+    public User() {
+    }
+
+    // Parameterized constructor for easy object creation
+    public User(String username, String email, String password) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+    }
 }

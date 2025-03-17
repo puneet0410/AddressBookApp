@@ -15,11 +15,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST,  "/api/auth/register").permitAll() // Allow both login & register
-                        .anyRequest().authenticated() // Secure all other endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/auth/forgotPassword/**", "/api/auth/resetPassword/**").permitAll()
+                        .requestMatchers("/addressbook/**").permitAll() // ✅ Allow AddressBook APIs
+                        .anyRequest().authenticated()
                 )
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/auth/**")) // Disable CSRF for auth endpoints
-                .headers(headers -> headers.frameOptions(frame -> frame.disable())); // Allow H2 Console in frames
+                .csrf(csrf -> csrf.disable()) // ✅ Disable CSRF for APIs
+                .headers(headers -> headers.frameOptions(frame -> frame.disable())); // ✅ Allow H2 Console
 
         return http.build();
     }
