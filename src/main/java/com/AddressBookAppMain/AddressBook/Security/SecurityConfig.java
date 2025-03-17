@@ -15,13 +15,22 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
+                        //  Permit access to authentication APIs
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/auth/forgotPassword/**", "/api/auth/resetPassword/**").permitAll()
-                        .requestMatchers("/addressbook/**").permitAll() // ✅ Allow AddressBook APIs
+
+                        //  Permit access to AddressBook APIs
+
+                        .requestMatchers(HttpMethod.GET, "/addressbook/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/addressbook/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/addressbook/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/addressbook/**").permitAll()
+
+                        //  Require authentication for all other requests
                         .anyRequest().authenticated()
                 )
-                .csrf(csrf -> csrf.disable()) // ✅ Disable CSRF for APIs
-                .headers(headers -> headers.frameOptions(frame -> frame.disable())); // ✅ Allow H2 Console
+                .csrf(csrf -> csrf.disable()) //  Disable CSRF for APIs
+                .headers(headers -> headers.frameOptions(frame -> frame.disable())); //  Allow H2 Console
 
         return http.build();
     }
