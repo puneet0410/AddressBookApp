@@ -18,84 +18,52 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/addressbook")
-@Slf4j  // Lombok annotation for logging
+@Slf4j
 public class AddressBookController {
 
     @Autowired
-    private AddressBookService addressBookService;
+    private IAddressBookService addressBookService;
 
     @GetMapping
     public ResponseEntity<List<AddressBook>> getAllContacts() {
-        log.info("Received request to fetch all contacts");
-        List<AddressBook> contacts = addressBookService.getAllContacts();
-        log.debug("Returning {} contacts", contacts.size());
-        return ResponseEntity.ok(contacts);
+        return ResponseEntity.ok(addressBookService.getAllContacts());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<AddressBook> getContactById(@PathVariable int id) {
-        log.info("Received request to fetch contact with ID: {}", id);
         return addressBookService.getContactById(id)
-                .map(contact -> {
-                    log.debug("Returning contact: {}", contact);
-                    return ResponseEntity.ok(contact);
-                })
-                .orElseGet(() -> {
-                    log.error("Contact with ID {} not found", id);
-                    return ResponseEntity.notFound().build();
-                });
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<?> addContact(@Valid @RequestBody AddressBookDTO addressBookDTO, BindingResult result) {
-        log.info("Received request to add new contact: {}", addressBookDTO);
-
-        // Handling validation errors
         if (result.hasErrors()) {
             List<String> errors = result.getFieldErrors().stream()
                     .map(error -> error.getField() + ": " + error.getDefaultMessage())
                     .collect(Collectors.toList());
-            log.error("Validation failed: {}", errors);
             return ResponseEntity.badRequest().body(errors);
         }
-
-        AddressBook contact = addressBookService.addContact(addressBookDTO);
-        log.debug("Contact added successfully: {}", contact);
-        return ResponseEntity.ok(contact);
+        return ResponseEntity.ok(addressBookService.addContact(addressBookDTO));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateContact(@PathVariable int id, @Valid @RequestBody AddressBookDTO addressBookDTO, BindingResult result) {
-        log.info("Received request to update contact with ID: {}", id);
-
-        // Handling validation errors
         if (result.hasErrors()) {
             List<String> errors = result.getFieldErrors().stream()
                     .map(error -> error.getField() + ": " + error.getDefaultMessage())
                     .collect(Collectors.toList());
-            log.error("Validation failed: {}", errors);
             return ResponseEntity.badRequest().body(errors);
         }
-
         return addressBookService.updateContact(id, addressBookDTO)
-                .map(updatedContact -> {
-                    log.debug("Updated contact: {}", updatedContact);
-                    return ResponseEntity.ok(updatedContact);
-                })
-                .orElseGet(() -> {
-                    log.error("Failed to update. Contact with ID {} not found", id);
-                    return ResponseEntity.notFound().build();
-                });
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteContact(@PathVariable int id) {
-        log.info("Received request to delete contact with ID: {}", id);
-        if (addressBookService.deleteContact(id)) {
-            log.info("Contact with ID {} deleted successfully", id);
-            return ResponseEntity.ok("Contact deleted successfully.");
-        }
-        log.error("Contact with ID {} not found, cannot delete", id);
-        return ResponseEntity.notFound().build();
+        return addressBookService.deleteContact(id)
+                ? ResponseEntity.ok("Contact deleted successfully.")
+                : ResponseEntity.notFound().build();
     }
 }
