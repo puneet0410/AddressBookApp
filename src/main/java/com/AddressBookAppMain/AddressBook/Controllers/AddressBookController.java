@@ -4,14 +4,18 @@ import com.AddressBookAppMain.AddressBook.DTO.AddressBookDTO;
 import com.AddressBookAppMain.AddressBook.Entity.AddressBook;
 import com.AddressBookAppMain.AddressBook.Interfaces.IAddressBookService;
 import com.AddressBookAppMain.AddressBook.Services.AddressBookService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/addressbook")
 @Slf4j  // Lombok annotation for logging
@@ -43,16 +47,36 @@ public class AddressBookController {
     }
 
     @PostMapping
-    public ResponseEntity<AddressBook> addContact(@RequestBody AddressBookDTO addressBookDTO) {
+    public ResponseEntity<?> addContact(@Valid @RequestBody AddressBookDTO addressBookDTO, BindingResult result) {
         log.info("Received request to add new contact: {}", addressBookDTO);
+
+        // Handling validation errors
+        if (result.hasErrors()) {
+            List<String> errors = result.getFieldErrors().stream()
+                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .collect(Collectors.toList());
+            log.error("Validation failed: {}", errors);
+            return ResponseEntity.badRequest().body(errors);
+        }
+
         AddressBook contact = addressBookService.addContact(addressBookDTO);
         log.debug("Contact added successfully: {}", contact);
         return ResponseEntity.ok(contact);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<AddressBook> updateContact(@PathVariable int id, @RequestBody AddressBookDTO addressBookDTO) {
+    public ResponseEntity<?> updateContact(@PathVariable int id, @Valid @RequestBody AddressBookDTO addressBookDTO, BindingResult result) {
         log.info("Received request to update contact with ID: {}", id);
+
+        // Handling validation errors
+        if (result.hasErrors()) {
+            List<String> errors = result.getFieldErrors().stream()
+                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .collect(Collectors.toList());
+            log.error("Validation failed: {}", errors);
+            return ResponseEntity.badRequest().body(errors);
+        }
+
         return addressBookService.updateContact(id, addressBookDTO)
                 .map(updatedContact -> {
                     log.debug("Updated contact: {}", updatedContact);

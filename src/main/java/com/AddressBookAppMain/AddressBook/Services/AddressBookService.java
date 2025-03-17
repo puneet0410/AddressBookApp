@@ -2,6 +2,7 @@ package com.AddressBookAppMain.AddressBook.Services;
 
 import com.AddressBookAppMain.AddressBook.DTO.AddressBookDTO;
 import com.AddressBookAppMain.AddressBook.Entity.AddressBook;
+import com.AddressBookAppMain.AddressBook.Exception.AddressBookException;
 import com.AddressBookAppMain.AddressBook.Interfaces.IAddressBookService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -9,8 +10,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-
 @Service
 @Slf4j  // Lombok annotation for logging
 public class AddressBookService {
@@ -23,11 +22,12 @@ public class AddressBookService {
         return contactList;
     }
 
+
     public Optional<AddressBook> getContactById(int id) {
-        log.info("Fetching contact with ID: {}", id);
-        return contactList.stream()
+        return Optional.ofNullable(contactList.stream()
                 .filter(c -> c.getId() == id)
-                .findFirst();
+                .findFirst()
+                .orElseThrow(() -> new AddressBookException("Employee with" + id + " not found")));
     }
 
     public AddressBook addContact(AddressBookDTO addressBookDTO) {
