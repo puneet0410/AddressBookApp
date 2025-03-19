@@ -10,6 +10,17 @@ public class LoginRequestDTO {
         return email;
     }
 
+    // Constructor with parameters
+    public LoginRequestDTO(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
+
+    // Default constructor
+    public LoginRequestDTO() {
+    }
+
+
     public void setEmail(String email) {
         this.email = email;
     }

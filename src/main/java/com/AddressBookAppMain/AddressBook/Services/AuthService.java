@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthService {
@@ -32,6 +33,8 @@ public class AuthService {
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;  // ✅ Autowire RedisTemplate
+
+    private static final String TOKEN_PREFIX = "JWT_TOKEN:";  // ✅ Key prefix for Redis storage
 
     // Register User
     public String registerUser(UserDTO userDTO) {
@@ -57,16 +60,13 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email or password!");
         }
 
-        // Invalidate any previous token
-        String existingToken = jwtUtils.getStoredToken(user.getEmail());
-        if (existingToken != null) {
-            redisTemplate.delete("JWT_TOKEN:" + user.getEmail());  // ✅ Remove old token
-        }
-
         // Generate and store a new token
         String token = jwtUtils.generateToken(user.getEmail());
 
-        // ✅ Send JWT token in email
+        // Store token in Redis with a 1-hour expiry
+        redisTemplate.opsForValue().set(TOKEN_PREFIX + user.getEmail(), token, 1, TimeUnit.HOURS);
+
+        // Send JWT token in email
         sendTokenEmail(user.getEmail(), token);
 
         return new LoginResponseDTO("Login successful! Check your email for the token.", token);
@@ -75,10 +75,15 @@ public class AuthService {
     public boolean loginWithToken(String token) throws MessagingException {
         String email = jwtUtils.getEmailFromToken(token);
 
-        if (email != null && jwtUtils.isTokenValid(email, token)) {  // ✅ Check token validity
-            // ✅ Send login success email
-            sendLoginSuccessEmail(email);
-            return true;
+        if (email != null) {
+            //  Retrieve token from Redis
+            String storedToken = redisTemplate.opsForValue().get(TOKEN_PREFIX + email);
+
+            if (storedToken != null && storedToken.equals(token) && jwtUtils.isTokenValid(email, token)) {
+                //  Send login success email
+                sendLoginSuccessEmail(email);
+                return true;
+            }
         }
 
         throw new IllegalArgumentException("Invalid or expired token!");
@@ -93,7 +98,6 @@ public class AuthService {
                 "<p style='font-size: 14px; color: #555;'>Use this token for authentication.</p>" +
                 "<p style='font-size: 14px; color: #333;'>Regards,<br><strong>AddressBook App Team</strong></p>";
 
-
         emailService.sendEmail(email, subject, message);
     }
 
@@ -107,7 +111,6 @@ public class AuthService {
 
         emailService.sendEmail(email, subject, message);
     }
-
 
     // Forgot Password
     public boolean forgotPassword(String email, String newPassword) throws MessagingException {
