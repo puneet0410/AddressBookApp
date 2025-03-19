@@ -9,6 +9,7 @@ import com.AddressBookAppMain.AddressBook.Repository.UserRepository;
 import com.AddressBookAppMain.AddressBook.Security.JwtUtil;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -27,9 +28,12 @@ public class AuthService {
     private JwtUtil jwtUtils;
 
     @Autowired
-    private EmailService emailService;  // ✅ Add EmailService here
+    private EmailService emailService;
 
-    // Register user
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;  // ✅ Autowire RedisTemplate
+
+    // Register User
     public String registerUser(UserDTO userDTO) {
         if (userRepository.existsByEmail(userDTO.getEmail())) {
             return "Error: Email already registered!";
@@ -44,8 +48,8 @@ public class AuthService {
         return "User registered successfully!";
     }
 
-    // Login user and generate JWT token
-    public LoginResponseDTO loginUser(LoginRequestDTO loginRequestDTO) {
+    // Login User (Email & Password)
+    public LoginResponseDTO loginUser(LoginRequestDTO loginRequestDTO) throws MessagingException {
         User user = userRepository.findByEmail(loginRequestDTO.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
@@ -53,9 +57,57 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email or password!");
         }
 
+        // Invalidate any previous token
+        String existingToken = jwtUtils.getStoredToken(user.getEmail());
+        if (existingToken != null) {
+            redisTemplate.delete("JWT_TOKEN:" + user.getEmail());  // ✅ Remove old token
+        }
+
+        // Generate and store a new token
         String token = jwtUtils.generateToken(user.getEmail());
-        return new LoginResponseDTO("Login successful!", token);
+
+        // ✅ Send JWT token in email
+        sendTokenEmail(user.getEmail(), token);
+
+        return new LoginResponseDTO("Login successful! Check your email for the token.", token);
     }
+
+    public boolean loginWithToken(String token) throws MessagingException {
+        String email = jwtUtils.getEmailFromToken(token);
+
+        if (email != null && jwtUtils.isTokenValid(email, token)) {  // ✅ Check token validity
+            // ✅ Send login success email
+            sendLoginSuccessEmail(email);
+            return true;
+        }
+
+        throw new IllegalArgumentException("Invalid or expired token!");
+    }
+
+    // ✅ Send JWT Token Email
+    private void sendTokenEmail(String email, String token) throws MessagingException {
+        String subject = "Your JWT Token for Login";
+        String message = "<p style='font-family: Arial, sans-serif; color: #333;'>Hello,</p>" +
+                "<p style='font-size: 14px; color: #555;'>Your login was successful. Here is your JWT token:</p>" +
+                "<p style='font-size: 16px; color: blue; font-weight: bold;'>" + token + "</p>" +
+                "<p style='font-size: 14px; color: #555;'>Use this token for authentication.</p>" +
+                "<p style='font-size: 14px; color: #333;'>Regards,<br><strong>AddressBook App Team</strong></p>";
+
+
+        emailService.sendEmail(email, subject, message);
+    }
+
+    // ✅ Send Login Success Email
+    private void sendLoginSuccessEmail(String email) throws MessagingException {
+        String subject = "Login Success Notification";
+        String message = "<p style='font-family: Arial, sans-serif; color: #333;'>Hello,</p>" +
+                "<p style='font-family: Arial, sans-serif; color: #333;'>You have successfully logged in using your token.</p>" +
+                "<p style='font-family: Arial, sans-serif; color: red; font-weight: bold;'>If this wasn't you, please reset your password immediately.</p>" +
+                "<p style='font-family: Arial, sans-serif; font-weight: bold;'>Regards,<br>AddressBook App Team</p>";
+
+        emailService.sendEmail(email, subject, message);
+    }
+
 
     // Forgot Password
     public boolean forgotPassword(String email, String newPassword) throws MessagingException {
@@ -65,45 +117,26 @@ public class AuthService {
             user.setPassword(passwordEncoder.encode(newPassword));
             userRepository.save(user);
 
-            // ✅ Send email notification
             String subject = "Password Changed Successfully";
-            String message = "Hello " + user.getUsername() + ",\n\nYour password has been successfully changed.\n\nIf you did not request this, please contact support immediately.";
-
+            String message = "Hello " + user.getUsername() + ",\n\nYour password has been changed.\n\nIf this wasn't you, contact support immediately.";
             emailService.sendEmail(user.getEmail(), subject, message);
             return true;
         }
         return false;
     }
 
+    // Reset Password
     public boolean resetPassword(String email, String oldPassword, String newPassword) {
         Optional<User> optionalUser = userRepository.findByEmail(email);
-
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();
-
-            // Verify old password
             if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
                 throw new IllegalArgumentException("Old password is incorrect!");
             }
-
-            // Hash and update new password
             user.setPassword(passwordEncoder.encode(newPassword));
             userRepository.save(user);
-
-            // ✅ Send email notification
-            try {
-                String subject = "Password Reset Successful";
-                String message = "Hello " + user.getUsername() + ",\n\nYour password has been successfully reset.\n\nIf you did not request this, please contact support immediately.";
-
-                emailService.sendEmail(user.getEmail(), subject, message);
-            } catch (Exception e) {
-                System.err.println("Failed to send email: " + e.getMessage());
-            }
-
             return true;
         }
-
-        return false; // User not found
+        return false;
     }
-
 }

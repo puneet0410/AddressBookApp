@@ -36,15 +36,26 @@ public class AuthController {
     }
 
     @PostMapping(value = "/login", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<LoginResponseDTO> loginUser(@RequestBody LoginRequestDTO loginRequestDTO) {
+    public ResponseEntity<LoginResponseDTO> loginUser(@RequestBody LoginRequestDTO loginRequestDTO) throws MessagingException {
         System.out.println("Login request received: " + loginRequestDTO.getEmail());
 
         LoginResponseDTO response = authService.loginUser(loginRequestDTO);
 
         System.out.println("Login response: " + response); // Debugging
-        emailService.sendLoginAlertEmail(loginRequestDTO.getEmail());
+//        emailService.sendLoginAlertEmail(loginRequestDTO.getEmail());
 
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/login-with-token")
+    public ResponseEntity<?> loginWithToken(@RequestHeader("Authorization") String token) {
+        try {
+            if (authService.loginWithToken(token.replace("Bearer ", ""))) {
+                return ResponseEntity.ok("Login successful with token.");
+            }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized.");
+        } catch (IllegalArgumentException | MessagingException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
     }
 
     @PutMapping("/forgotPassword")
@@ -78,3 +89,31 @@ public class AuthController {
 
 
 }
+
+//
+//spring.datasource.url=jdbc:mysql://localhost:3306/addressbook_db?serverTimezone=UTC
+//spring.datasource.username=${DB_USERNAME}
+//spring.datasource.password=${DB_PASSWORD}
+//spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+//spring.jpa.hibernate.ddl-auto=update
+//spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+//
+//jwt.secret=${JWT_SECRET}
+//jwt.expiration=3600000
+//
+//spring.mail.host=smtp.gmail.com
+//spring.mail.port=587
+//spring.mail.username=${MAIL_USERNAME}
+//spring.mail.password=${MAIL_PASSWORD}
+//spring.mail.properties.mail.smtp.auth=true
+//spring.mail.properties.mail.smtp.starttls.enable=true
+//
+//springdoc.api-docs.enabled=true
+//springdoc.swagger-ui.enabled=true
+//
+//server.servlet.context-path=/
+//
+//spring.redis.host=127.0.0.1
+//spring.redis.port=6379
+//spring.redis.password=  # Leave blank if no password is used
+//spring.cache.type=redis
