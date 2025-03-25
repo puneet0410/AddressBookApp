@@ -39,7 +39,6 @@ public class AuthController {
         return ResponseEntity.ok("Message sent to RabbitMQ: " + message);
     }
 
-
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody UserDTO userDTO) {
         log.info("Registering user: {}", userDTO.getUsername());  // ✅ Logging username

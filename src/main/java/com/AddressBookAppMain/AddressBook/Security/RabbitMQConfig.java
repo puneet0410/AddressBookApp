@@ -3,7 +3,8 @@ package com.AddressBookAppMain.AddressBook.Security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import org.springframework.amqp.core.Queue;  // ✅ Correct import
+import org.springframework.amqp.core.Queue;
+
 
 @Configuration
 public class RabbitMQConfig {
