@@ -19,6 +19,14 @@ public class SecurityConfig {
                         //  Permit access to authentication APIs
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login","/api/auth/login-with-token", "/api/auth/send-message").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/auth/forgotPassword/**", "/api/auth/resetPassword/**").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
 
                         //  Permit access to AddressBook APIs
 
